@@ -1,0 +1,12 @@
+[servicestage]
+domain_name=xxx
+user_name=xxx
+password=xxx
+project_name={region_id}_xxx
+iam_endpoint=https://iam-apigateway-proxy.{region_id}.{external_global_domain_name}:443
+servicestage_endpoint=https://servicestage.{region_id}.{external_global_domain_name}:443
+cse_image_url=xxx
+app_image_url=xxx
+cluster_type=VirtualMachine
+#performance_type值含义：cse表示微服务实例数场景；app表示应用实例数场景；clean表示清理当前的实例数据
+performance_type=app

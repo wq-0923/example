@@ -89,7 +89,7 @@ class ServiceStage:
             refer_resources.append(cse_resources)
         artifacts = {component_name: {"storage": "swr", "type": "image", "url": image_url, "auth": "iam", "version": "1.0.0", "properties": {}}}
         body = {"name": instance_name, "version": "1.0.0", "environment_id": env_id,
-                "flavor_id": "CUSTOM-10G:null-null:null-null", "replica": 2, "artifacts": artifacts,
+                "flavor_id": "CUSTOM-10G:null-null:null-null", "replica": 20, "artifacts": artifacts,
                 "refer_resources": refer_resources}
         return post(url=url, headers=self.__headers, body=json.dumps(body))
 
@@ -100,7 +100,7 @@ class ServiceStage:
             status = res['status_detail']['status']
             if status == 'INITIALIZING':
                 print('Instance deploying...')
-                time.sleep(30)
+                time.sleep(10)
             else:
                 break
 
@@ -127,7 +127,9 @@ def main():
     project_id = json.loads(resp.content)["token"]["project"]["id"]
     servicestage = ServiceStage(servicestage_endpoint, user_token, project_id)
     environment_list=servicestage.get_environment()
-    env_id=environment_list['environments'][0]['id']
+    for environment in environment_list['environments']:
+        if "ss-performance-test" in environment['name']:
+            env_id = environment['id']
     for base_resources in environment_list['environments'][0]['base_resources']:
         if base_resources['type'] == 'cce':
             cluster_id = base_resources['id']
@@ -141,7 +143,7 @@ def main():
         app_res=servicestage.create_application(app_name)
         app_id=app_res['id']
         image_url=cfg.get('cse_image_url')
-        for i in range(50):
+        for i in range(5):
             component_name="comp-test-%s" % random.randint(1000, 9999)
             comp_res=servicestage.create_component(app_id, component_name, "Docker", "MicroService", sub_category="Java Chassis")
             comp_id=comp_res['id']
@@ -149,37 +151,39 @@ def main():
             inst_res=servicestage.create_instance(app_id, comp_id, env_id, cluster_id, cluster_type,comp_name, image_url, engine_id=cse_id)
             inst_id=inst_res['instance_id']
             servicestage.get_instance_status(app_id, comp_id, inst_id)
-            time.sleep(1)
+
     elif cfg.get('performance_type') == "app":
         app_name="app-performance-test-%s" % random.randint(1000, 9999)
         app_res=servicestage.create_application(app_name)
         app_id=app_res['id']
         image_url = cfg.get('app_image_url')
-        for i in range(1000):
+        for i in range(100):
             component_name="comp-test-%s" % random.randint(1000, 9999)
             comp_res=servicestage.create_component(app_id, component_name, "Docker", "Webapp", sub_category="Web")
             comp_id=comp_res['id']
             comp_name=comp_res['name']
-            inst_res=servicestage.create_instance(app_id, comp_id, env_id, cluster_id, cluster_type, comp_name, image_url)
-            inst_id=inst_res['instance_id']
-            servicestage.get_instance_status(app_id, comp_id, inst_id)
-            time.sleep(1)
+            servicestage.create_instance(app_id, comp_id, env_id, cluster_id, cluster_type, comp_name, image_url)
+            print('Instance Deploying...')
+            time.sleep(20)
+
     elif cfg.get('performance_type') == "clean":
         app_list = servicestage.get_application()
         for app_info in app_list['applications']:
-            app_id = app_info['id']
-            comp_list = servicestage.get_component(app_id)
-            if comp_list['components']:
-                for comp_info in comp_list['components']:
-                    comp_id = comp_info['id']
-                    servicestage.delete_component(app_id, comp_id)
-            for i in range(10):
+            if "app-performance-test" in app_info['name']:
+                app_id = app_info['id']
                 comp_list = servicestage.get_component(app_id)
-                if comp_list['count'] == 0:
-                    servicestage.delete_application(app_id)
-                    break
-                else:
-                    time.sleep(30)
+                if comp_list['components']:
+                    for comp_info in comp_list['components']:
+                        comp_id = comp_info['id']
+                        servicestage.delete_component(app_id, comp_id)
+                        time.sleep(10)
+                for i in range(10):
+                    comp_list = servicestage.get_component(app_id)
+                    if comp_list['count'] == 0:
+                        servicestage.delete_application(app_id)
+                        break
+                    else:
+                        time.sleep(30)
     else:
         print("performance_type key's error")
 

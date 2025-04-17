@@ -36,13 +36,14 @@
 
 # test
 
-name: CI
+name: Java CI with Maven
+
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # 添加这一行
+    branches: [ master ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
